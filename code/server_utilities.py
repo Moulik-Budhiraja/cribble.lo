@@ -63,14 +63,19 @@ class CommandLineInterface:
 
     async def send(self, message, client_id):
         """Sends a message to the client with the given id"""
-        client_id = uuid.UUID(client_id)
-        message = {"message": message}
+        try:
+            client_id = uuid.UUID(client_id)
+        except ValueError:
+            print("Invalid client id.")
+            return
 
         try:
             client = self.server.clients[client_id]
         except KeyError:
             print("Client not found.")
             return
+
+        message = {"message": message}
 
         await self.server._send_message(client["websocket"], message)
 

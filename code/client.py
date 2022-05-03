@@ -16,27 +16,40 @@ class Client:
         self.outbox = []
         self.inbox = []
 
-    async def _connect(self):
+        self.active = False
+
+    async def connect(self):
         """Keeps the connection to the server alive and 
         sends messages when they are available"""
         async with websockets.connect(self.url) as websocket:
             asyncio.create_task(self.receive_messages(websocket))
+
+            self.active = True
             while True:
                 if self.outbox:
                     asyncio.create_task(self.send_messages(websocket))
 
+                if self.active == False:
+                    await self._send_message(websocket, {"action": "disconnect", "data": None})
+                    await websocket.close(reason="Disconnected")
+
                 await asyncio.sleep(0.01)
+
+    async def disconnect(self):
+        """Disconnects from the server"""
+        self.active = False
+        await asyncio.sleep(0.1)
 
     async def _send_message(self, websocket, message: dict):
         """Sends a single message to the server"""
         await websocket.send(json.dumps(message))
-        print(f"Sent: {message}\n")
+        # print(f"Sent: {message}\n")
 
     async def _receive_message(self, websocket):
         """Receives a single message from the server"""
         message = await websocket.recv()
         message = json.loads(message)
-        print(f"Received: {message}\n")
+        # print(f"Received: {message}\n")
         return message
 
     async def send_messages(self, websocket):
@@ -59,4 +72,4 @@ class Client:
 if __name__ == "__main__":
     client = Client("localhost")
     client.send_message({"action": "hello", "data": "world"})
-    asyncio.get_event_loop().run_until_complete(client._connect())
+    asyncio.get_event_loop().run_until_complete(client.connect())
